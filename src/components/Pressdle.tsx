@@ -4,6 +4,7 @@ import { usePressdleContext } from "../lib/PressdleContext/selectors";
 import { getGuessFeedback } from "../lib/valueHelpers";
 import { analogToMm } from "../lib/valueHelpers";
 import { GUESSES_ALLOWED, TARGET_KEY } from "../lib/gameConstants";
+import { generateTargetForDay } from "../lib/dailyTarget";
 
 interface Props {
   device: HIDDevice;
@@ -11,7 +12,7 @@ interface Props {
 
 export function Pressdle({ device }: Props) {
   const [currentAnalogValue, setCurrentAnalogValue] = useState(0);
-  const { targetActuation, guesses, gameState, dispatch } =
+  const { targetActuation, guesses, gameState, isPracticeMode, dispatch } =
     usePressdleContext();
 
   // Process analog reports from the device
@@ -54,22 +55,59 @@ export function Pressdle({ device }: Props) {
   }, [gameState, device, submitGuess]);
 
   useEffect(() => {
-    if (guesses.length > GUESSES_ALLOWED) {
-      console.log("Game over", guesses.length, GUESSES_ALLOWED);
+    if (guesses.length >= GUESSES_ALLOWED && gameState === "playing") {
       dispatch({ type: "SET_GAME_STATE", payload: "lost" });
     }
-  }, [dispatch, guesses]);
+  }, [dispatch, guesses, gameState]);
+
+  const startPracticeMode = useCallback(() => {
+    // Generate a new random target for practice mode
+    const practiceTarget = generateTargetForDay(Date.now());
+    dispatch({ type: "RESET_GAME", payload: practiceTarget });
+  }, [dispatch]);
 
   return (
     <div className="mt-8 flex flex-col gap-4 items-center justify-center text-white">
-      <div className="w-full text-center bg-zinc-800 p-4 rounded-lg">
-        <div>
-          Press the <strong>B</strong> key to guess
+      {gameState !== "playing" ? (
+        <div className="flex flex-col items-center justify-center text-center p-4 bg-zinc-800 w-full rounded-lg">
+          <h2 className="text-2xl font-bold mb-2">
+            {gameState === "won" ? "You Won!" : "Game Over"}
+          </h2>
+          <p>
+            The target actuation point was:{" "}
+            {analogToMm(targetActuation).toFixed(2)} mm
+          </p>
+          <div className="flex gap-2 mt-4">
+            {isPracticeMode ? (
+              <>
+                <button
+                  onClick={startPracticeMode}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+                >
+                  Try Another Target
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={startPracticeMode}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+              >
+                Practice Mode
+              </button>
+            )}
+          </div>
         </div>
-        <div>
-          Press <strong>Enter</strong> to lock in your guess
+      ) : (
+        <div className="flex flex-col items-center justify-center text-center bg-zinc-800 p-4 rounded-lg w-full">
+          <div>
+            Press the <strong>B</strong> key to guess
+          </div>
+          <div>
+            Press <strong>Enter</strong> to lock in your guess
+          </div>
         </div>
-      </div>
+      )}
+
       <div className="flex gap-4 w-full">
         <div className="bg-zinc-800 p-4 rounded-lg">
           <h3 className="text-lg font-medium text-white mb-2">
@@ -85,13 +123,14 @@ export function Pressdle({ device }: Props) {
                 style={{ height: `${currentAnalogValue * 100}%` }}
               ></div>
             </div>
-            <div className="flex flex-col justify-between text-xs text-gray-500 -my-1">
+            <div className="flex flex-col justify-between text-xs text-zinc-400 -my-1">
               <span>0.01mm</span>
               <span>2.00mm</span>
               <span>4.00mm</span>
             </div>
           </div>
         </div>
+
         <div className="bg-zinc-800 flex items-center gap-4 rounded-lg p-6">
           {[...Array(GUESSES_ALLOWED)].map((_, index) => {
             const guess = guesses[index];
@@ -117,7 +156,7 @@ export function Pressdle({ device }: Props) {
                     style={{ height: `${guess.value * 100}%` }}
                   ></div>
                 </div>
-                <div className="text-xs text-gray-500 flex flex-col items-center gap-2">
+                <div className="text-xs text-zinc-400 flex flex-col items-center gap-2">
                   <span className="font-semibold">
                     {analogToMm(guess.value).toFixed(2)} mm
                   </span>
@@ -142,17 +181,6 @@ export function Pressdle({ device }: Props) {
           })}
         </div>
       </div>
-      {gameState !== "playing" && (
-        <div className="text-center p-4 bg-zinc-800 w-full rounded-lg ">
-          <h2 className="text-2xl font-bold mb-2">
-            {gameState === "won" ? "You Won!" : "Game Over"}
-          </h2>
-          <p>
-            The target actuation point was:{" "}
-            {analogToMm(targetActuation).toFixed(2)} mm
-          </p>
-        </div>
-      )}
     </div>
   );
 }

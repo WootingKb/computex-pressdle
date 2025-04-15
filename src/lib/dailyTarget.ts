@@ -27,7 +27,7 @@ function seededRandom(seed: number): number {
 }
 
 // Generate a target value for a specific day
-function generateTargetForDay(dayIndex: number): number {
+export function generateTargetForDay(dayIndex: number): number {
   // Use the day index as a seed for our random number generator
   const randomValue = seededRandom(dayIndex);
   // Convert to a value between 0 and 1 with max 2 decimal places

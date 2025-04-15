@@ -1,4 +1,4 @@
-import { AnalogKey } from "../components/ConnectDevice";
+import { AnalogKey } from "./analogKey";
 
 // Constants for the game
 export const MIN_ACTUATION = 0.01; // mm

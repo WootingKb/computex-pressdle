@@ -4,6 +4,12 @@ export interface PressdleState {
   targetActuation: number;
   guesses: { value: number; feedback: "higher" | "lower" | "correct" }[];
   gameState: "playing" | "won" | "lost";
+  isPracticeMode: boolean;
+  dailyChallengeState?: {
+    targetActuation: number;
+    guesses: { value: number; feedback: "higher" | "lower" | "correct" }[];
+    gameState: "playing" | "won" | "lost";
+  };
 }
 
 // Define action types
@@ -15,7 +21,9 @@ export type PressdleAction =
       type: "ADD_GUESS";
       payload: { value: number; feedback: "higher" | "lower" | "correct" };
     }
-  | { type: "SET_GAME_STATE"; payload: "playing" | "won" | "lost" };
+  | { type: "SET_GAME_STATE"; payload: "playing" | "won" | "lost" }
+  | { type: "RESET_GAME"; payload: number }
+  | { type: "LEAVE_PRACTICE_MODE" };
 
 // Initial state
 export const initialState: PressdleState = {
@@ -23,6 +31,7 @@ export const initialState: PressdleState = {
   targetActuation: 0,
   guesses: [],
   gameState: "playing",
+  isPracticeMode: false,
 };
 
 // Reducer function
@@ -30,6 +39,9 @@ export const reducer = (
   state: PressdleState,
   action: PressdleAction
 ): PressdleState => {
+  // Variable to store daily challenge state
+  let dailyChallengeState;
+
   switch (action.type) {
     case "CONNECT_DEVICE":
       if (state.device && state.device !== action.payload) {
@@ -62,6 +74,40 @@ export const reducer = (
       return {
         ...state,
         gameState: action.payload,
+      };
+    case "RESET_GAME":
+      // If we're not already in practice mode, save the current state as daily challenge state
+      dailyChallengeState = !state.isPracticeMode
+        ? {
+            targetActuation: state.targetActuation,
+            guesses: state.guesses,
+            gameState: state.gameState,
+          }
+        : state.dailyChallengeState;
+
+      return {
+        ...state,
+        targetActuation: action.payload,
+        guesses: [],
+        gameState: "playing",
+        isPracticeMode: true,
+        dailyChallengeState,
+      };
+    case "LEAVE_PRACTICE_MODE":
+      // If we have a saved daily challenge state, restore it
+      if (state.dailyChallengeState) {
+        return {
+          ...state,
+          targetActuation: state.dailyChallengeState.targetActuation,
+          guesses: state.dailyChallengeState.guesses,
+          gameState: state.dailyChallengeState.gameState,
+          isPracticeMode: false,
+        };
+      }
+      // Otherwise, just exit practice mode but keep the current state
+      return {
+        ...state,
+        isPracticeMode: false,
       };
     default:
       return state;

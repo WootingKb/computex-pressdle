@@ -1,8 +1,9 @@
+import { useCallback } from "react";
 import { usePressdleContext } from "../lib/PressdleContext/selectors";
 import { Modal } from "./Modal";
 
 export function Header() {
-  const { device, dispatch } = usePressdleContext();
+  const { device, isPracticeMode, dispatch } = usePressdleContext();
 
   const handleDisconnect = async () => {
     if (device) {
@@ -21,11 +22,25 @@ export function Header() {
     day: "numeric",
   });
 
+  const leavePracticeMode = useCallback(() => {
+    dispatch({ type: "LEAVE_PRACTICE_MODE" });
+  }, [dispatch]);
+
   return (
     <header className="flex items-center justify-between w-full bg-zinc-800 text-white h-14 px-6 py-2">
-      <h1 className="text-2xl font-bold">Pressdle - {today}</h1>
+      <h1 className="text-2xl font-bold">
+        Pressdle - {isPracticeMode ? "Practice Mode" : today}
+      </h1>
 
       <div className="flex gap-4 h-full">
+        {isPracticeMode && (
+          <button
+            onClick={leavePracticeMode}
+            className="ml-2 px-2 py-1 text-xs bg-gray-600 hover:bg-gray-700 rounded-md transition-colors"
+          >
+            Back to Daily Challenge
+          </button>
+        )}
         {device && (
           <div className="flex items-center gap-2 pr-4 h-full border-r border-zinc-600">
             <div>{device.productName}</div>
@@ -68,7 +83,7 @@ export function Header() {
             </p>
           </div>
         </Modal>
-        <Modal triggerText="Credits" title="About Pressdle">
+        <Modal triggerText="Info" title="About Pressdle">
           <div>
             <p className="mb-4">
               Pressdle was created to showcase the analog capabilities of
