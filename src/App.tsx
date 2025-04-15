@@ -1,3 +1,4 @@
+import "./index.css";
 import { Pressdle } from "./components/Pressdle";
 import { Header } from "./components/Header";
 import { ConnectDevice } from "./components/ConnectDevice";
