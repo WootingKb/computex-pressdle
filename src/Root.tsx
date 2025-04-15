@@ -1,7 +1,7 @@
 import { Pressdle } from "./components/Pressdle";
 import { Header } from "./components/Header";
 import { ConnectDevice } from "./components/ConnectDevice";
-import { usePressdleContext } from "./lib/PressdleContext";
+import { usePressdleContext } from "./lib/PressdleContext/selectors";
 import { useCallback, useEffect } from "react";
 
 export function Root() {

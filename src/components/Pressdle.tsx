@@ -1,7 +1,7 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AnalogReport } from "./ConnectDevice";
-import { usePressdleContext } from "../lib/PressdleContext";
-import { formatMm, getGuessFeedback, mmToAnalog } from "../lib/valueHelpers";
+import { usePressdleContext } from "../lib/PressdleContext/selectors";
+import { getGuessFeedback } from "../lib/valueHelpers";
 import { analogToMm } from "../lib/valueHelpers";
 import { GUESSES_ALLOWED, TARGET_KEY } from "../lib/gameConstants";
 
@@ -10,39 +10,17 @@ interface Props {
 }
 
 export function Pressdle({ device }: Props) {
-  const {
-    targetActuation,
-    currentAnalogValue,
-    currentMm,
-    guesses,
-    gameState,
-    dispatch,
-  } = usePressdleContext();
-
-  // Generate a random target actuation point on component mount
-  useEffect(() => {
-    const randomValue = Math.random();
-    const randomMm = analogToMm(randomValue);
-    dispatch({ type: "SET_TARGET_ACTUATION", payload: randomMm });
-    console.log("Target actuation point:", formatMm(randomMm), "mm");
-  }, []);
+  const [currentAnalogValue, setCurrentAnalogValue] = useState(0);
+  const { targetActuation, guesses, gameState, dispatch } =
+    usePressdleContext();
 
   // Process analog reports from the device
   useEffect(() => {
     const handleAnalogReport = (event: AnalogReport) => {
       const { data } = event;
       const targetKeyData = data.find((d) => d.key === TARGET_KEY);
-
-      if (targetKeyData) {
-        dispatch({
-          type: "SET_CURRENT_ANALOG_VALUE",
-          payload: targetKeyData.value,
-        });
-        dispatch({
-          type: "SET_CURRENT_MM",
-          payload: analogToMm(targetKeyData.value),
-        });
-      }
+      // Data values are in range from 0 (undefined) to 1 (fully pressed to 4.0mm)
+      setCurrentAnalogValue(targetKeyData?.value ?? 0);
     };
 
     device.onanalogreport = handleAnalogReport;
@@ -54,15 +32,14 @@ export function Pressdle({ device }: Props) {
 
   const submitGuess = useCallback(() => {
     if (gameState !== "playing") return;
-
-    const feedback = getGuessFeedback(currentMm, targetActuation);
-    const newGuess = { value: currentMm, feedback };
+    const feedback = getGuessFeedback(currentAnalogValue, targetActuation);
+    const newGuess = { value: currentAnalogValue, feedback };
     dispatch({ type: "ADD_GUESS", payload: newGuess });
 
     if (feedback === "correct") {
       dispatch({ type: "SET_GAME_STATE", payload: "won" });
     }
-  }, [currentMm, gameState, targetActuation, dispatch]);
+  }, [currentAnalogValue, gameState, targetActuation, dispatch]);
 
   // Handle key press to submit a guess
   useEffect(() => {
@@ -74,22 +51,14 @@ export function Pressdle({ device }: Props) {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentMm, gameState, device, submitGuess]);
+  }, [gameState, device, submitGuess]);
 
   useEffect(() => {
-    if (guesses.length >= GUESSES_ALLOWED) {
+    if (guesses.length > GUESSES_ALLOWED) {
       console.log("Game over", guesses.length, GUESSES_ALLOWED);
       dispatch({ type: "SET_GAME_STATE", payload: "lost" });
     }
   }, [dispatch, guesses]);
-
-  const resetGame = () => {
-    const randomValue = Math.random();
-    const randomMm = analogToMm(randomValue);
-    dispatch({ type: "SET_TARGET_ACTUATION", payload: randomMm });
-    dispatch({ type: "RESET_GAME" });
-    console.log("New target actuation point:", formatMm(randomMm), "mm");
-  };
 
   return (
     <div className="mt-8 flex flex-col gap-4 items-center justify-center text-white">
@@ -107,7 +76,7 @@ export function Pressdle({ device }: Props) {
             Current Actuation Point:
           </h3>
           <div className="text-3xl font-bold text-white text-center my-2">
-            {formatMm(currentMm)} mm
+            {analogToMm(currentAnalogValue).toFixed(2)} mm
           </div>
           <div className="flex gap-2 py-4 justify-center">
             <div className="relative h-48 w-5 bg-gray-200 rounded-full overflow-hidden">
@@ -145,15 +114,15 @@ export function Pressdle({ device }: Props) {
                 <div className="relative h-48 w-5 bg-gray-200 rounded-full overflow-hidden">
                   <div
                     className="absolute top-0 w-full bg-blue-500 transition-all duration-100"
-                    style={{ height: `${mmToAnalog(guess.value) * 100}%` }}
+                    style={{ height: `${guess.value * 100}%` }}
                   ></div>
                 </div>
                 <div className="text-xs text-gray-500 flex flex-col items-center gap-2">
                   <span className="font-semibold">
-                    {formatMm(guess.value)} mm
+                    {analogToMm(guess.value).toFixed(2)} mm
                   </span>
                   <span
-                    className={`font-medium text-center ${
+                    className={`font-semibold text-center ${
                       guess.feedback === "correct"
                         ? "text-green-500"
                         : guess.feedback === "higher"
@@ -178,15 +147,10 @@ export function Pressdle({ device }: Props) {
           <h2 className="text-2xl font-bold mb-2">
             {gameState === "won" ? "You Won!" : "Game Over"}
           </h2>
-          <p className="mb-4">
-            The target actuation point was: {formatMm(targetActuation)} mm
+          <p>
+            The target actuation point was:{" "}
+            {analogToMm(targetActuation).toFixed(2)} mm
           </p>
-          <button
-            onClick={resetGame}
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
-          >
-            Play Again
-          </button>
         </div>
       )}
     </div>
