@@ -1,5 +1,6 @@
 // Constants for target generation
-const START_DATE = new Date("2024-01-01").getTime(); // Fixed start date
+// Use UTC for the start date
+const START_DATE = Date.UTC(2024, 0, 1); // January is 0 in JS
 const STORAGE_KEY = "pressdle_daily_target";
 
 interface DailyTarget {
@@ -7,15 +8,24 @@ interface DailyTarget {
   value: number;
 }
 
-// Get today's date string in YYYY-MM-DD format
+// Get today's date string in YYYY-MM-DD format (UTC)
 function getTodayString(): string {
-  return new Date().toISOString().split("T")[0];
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const month = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(now.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
-// Get the number of days since the start date
+// Get the number of days since the start date (UTC)
 function getDaysSinceStart(): number {
-  const today = new Date().getTime();
-  const diffTime = today - START_DATE;
+  const now = new Date();
+  const todayUTC = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate()
+  );
+  const diffTime = todayUTC - START_DATE;
   return Math.floor(diffTime / (1000 * 60 * 60 * 24));
 }
 
